@@ -1,0 +1,17 @@
+{
+  "name": "guestbook",
+  "version": "1.0.0",
+  "description": "Wirtualna księga gości ",
+  "main": "server.js",
+  "scripts": {
+    "start": "set ADMIN_USER=wojtek2003&& set ADMIN_PASS=ZukiWerben128&& node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^5.1.0",
+    "multer": "^2.0.2",
+    "sqlite3": "^5.1.7"
+  }
+}

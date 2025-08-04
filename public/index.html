@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wirtualna Księga Gości</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center py-10">
+
+  <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
+    <h1 class="text-2xl font-bold text-center mb-4">Wirtualna Księga Gości</h1>
+    <form id="guestForm" class="space-y-4">
+      <div>
+        <label for="name" class="block text-sm font-medium text-gray-700">Imię lub pseudonim</label>
+        <input id="name" name="name" type="text" required
+          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md
+                 shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" />
+      </div>
+      <div>
+        <label for="message" class="block text-sm font-medium text-gray-700">Życzenia (opcjonalnie)</label>
+        <textarea id="message" name="message" rows="3"
+          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md
+                 shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+      </div>
+      <div>
+        <label for="fileInput" class="block text-sm font-medium text-gray-700">Zdjęcie lub wideo</label>
+        <input 
+        id="fileInput"
+        name="media"
+        type="file"
+        accept="image/*,video/*" 
+          class="mt-1 block w-full text-gray-600 file:mr-4 file:py-2 file:px-4
+                 file:rounded-md file:border-0
+                 file:text-sm file:font-semibold
+                 file:bg-indigo-50 file:text-indigo-700
+                 hover:file:bg-indigo-100" />
+      </div>
+      <button type="submit"
+        class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md
+               shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        Wyślij wpis
+      </button>
+    </form>
+  </div>
+
+  <!-- Galeria ostatnich 6 mediów -->
+  <div class="w-full max-w-4xl mt-10 px-4">
+    <h2 class="text-xl font-semibold text-gray-800 mb-4">Ostatnie media</h2>
+    <div id="gallery"
+      class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 opacity-0 transition-opacity duration-500">
+      <!-- JS wstrzyknie <img> lub <video> -->
+    </div>
+  </div>
+
+  <!-- Modal/lightbox -->
+  <div id="modal"
+       class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 hidden">
+    <div class="relative max-w-full max-h-full">
+      <button id="modalClose"
+              class="absolute top-0 right-0 text-white text-3xl font-bold">&times;</button>
+      <img id="modalImg" class="max-w-full max-h-full hidden rounded-md" />
+      <video id="modalVideo" class="max-w-full max-h-full hidden rounded-md" controls autoplay></video>
+    </div>
+  </div>
+
+  <script>
+    // 1) Obsługa formularza
+    document.getElementById('guestForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const data = new FormData(e.target);
+      try {
+        const resp = await fetch('/api/upload', { method: 'POST', body: data });
+        const json = await resp.json();
+        if (json.success) {
+          alert('Dziękujemy za wpis!');
+          e.target.reset();
+          loadGallery();
+        } else {
+          alert('Błąd: ' + (json.error || 'nieznany'));
+        }
+      } catch {
+        alert('Błąd sieciowy przy wysyłce.');
+      }
+    });
+
+    // 2) Lightbox
+    const modal = document.getElementById('modal');
+    const modalImg = document.getElementById('modalImg');
+    const modalVideo = document.getElementById('modalVideo');
+    const modalClose = document.getElementById('modalClose');
+
+    modalClose.addEventListener('click', () => {
+      modal.classList.add('hidden');
+      modalVideo.pause();
+    });
+    modal.addEventListener('click', e => {
+      if (e.target === modal) {
+        modal.classList.add('hidden');
+        modalVideo.pause();
+      }
+    });
+
+    // 3) Wczytywanie galerii (obrazy i wideo)
+    async function loadGallery() {
+      try {
+        const urls = await fetch('/api/guests').then(r => r.json());
+        const gallery = document.getElementById('gallery');
+        gallery.innerHTML = '';
+        const items = urls.slice(0, 6);
+
+        items.forEach(url => {
+          const isVideo = /\.(mp4|webm|ogg)$/i.test(url);
+          const el = document.createElement(isVideo ? 'video' : 'img');
+          el.src = url;
+          el.className = 'w-full h-24 object-cover rounded-md shadow cursor-pointer';
+          if (isVideo) {
+            el.muted = true;
+            el.playsInline = true;
+          } else {
+            el.alt = 'Zdjęcie z księgi gości';
+          }
+          el.addEventListener('click', () => {
+            modalImg.classList.add('hidden');
+            modalVideo.classList.add('hidden');
+            if (isVideo) {
+              modalVideo.src = url;
+              modalVideo.classList.remove('hidden');
+            } else {
+              modalImg.src = url;
+              modalImg.classList.remove('hidden');
+            }
+            modal.classList.remove('hidden');
+          });
+          gallery.appendChild(el);
+        });
+
+        gallery.classList.remove('opacity-0');
+      } catch (err) {
+        console.error('Błąd galerii:', err);
+      }
+    }
+
+    // ładujemy galerę po pełnym załadowaniu strony
+    window.addEventListener('load', loadGallery);
+  </script>
+</body>
+</html>
