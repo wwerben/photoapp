@@ -80,6 +80,6 @@ app.get('/admin', adminAuth, (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-app.listen(PORT, '62.169.25.27', () => {
-    console.log(`Serwer działa na http://62.169.25.27:${PORT}`);
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Serwer działa na http://0.0.0.0:${PORT}`);
 });

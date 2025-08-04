@@ -4,7 +4,7 @@
   "description": "Wirtualna księga gości ",
   "main": "server.js",
   "scripts": {
-    "start": "set ADMIN_USER=wojtek2003&& set ADMIN_PASS=ZukiWerben128&& node server.js"
+    "start": "set ADMIN_USER=wojtek2003 ADMIN_PASS=ZukiWerben128&& node server.js"
   },
   "keywords": [],
   "author": "",
