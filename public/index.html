@@ -1,149 +1,364 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Wirtualna Księga Gości</title>
-  <!-- Tailwind CSS CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-gray-100 min-h-screen flex flex-col items-center py-10">
-
-  <div class="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
-    <h1 class="text-2xl font-bold text-center mb-4">Wirtualna Księga Gości</h1>
-    <form id="guestForm" class="space-y-4">
-      <div>
-        <label for="name" class="block text-sm font-medium text-gray-700">Imię lub pseudonim</label>
-        <input id="name" name="name" type="text" required
-          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md
-                 shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500" />
-      </div>
-      <div>
-        <label for="message" class="block text-sm font-medium text-gray-700">Życzenia (opcjonalnie)</label>
-        <textarea id="message" name="message" rows="3"
-          class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md
-                 shadow-sm placeholder-gray-400 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
-      </div>
-      <div>
-        <label for="fileInput" class="block text-sm font-medium text-gray-700">Zdjęcie lub wideo</label>
-        <input 
-        id="fileInput"
-        name="media"
-        type="file"
-        accept="image/*,video/*" 
-          class="mt-1 block w-full text-gray-600 file:mr-4 file:py-2 file:px-4
-                 file:rounded-md file:border-0
-                 file:text-sm file:font-semibold
-                 file:bg-indigo-50 file:text-indigo-700
-                 hover:file:bg-indigo-100" />
-      </div>
-      <button type="submit"
-        class="w-full py-2 px-4 bg-indigo-600 text-white font-semibold rounded-md
-               shadow hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-        Wyślij wpis
-      </button>
-    </form>
-  </div>
-
-  <!-- Galeria ostatnich 6 mediów -->
-  <div class="w-full max-w-4xl mt-10 px-4">
-    <h2 class="text-xl font-semibold text-gray-800 mb-4">Ostatnie media</h2>
-    <div id="gallery"
-      class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4 opacity-0 transition-opacity duration-500">
-      <!-- JS wstrzyknie <img> lub <video> -->
-    </div>
-  </div>
-
-  <!-- Modal/lightbox -->
-  <div id="modal"
-       class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 hidden">
-    <div class="relative max-w-full max-h-full">
-      <button id="modalClose"
-              class="absolute top-0 right-0 text-white text-3xl font-bold">&times;</button>
-      <img id="modalImg" class="max-w-full max-h-full hidden rounded-md" />
-      <video id="modalVideo" class="max-w-full max-h-full hidden rounded-md" controls autoplay></video>
-    </div>
-  </div>
-
-  <script>
-    // 1) Obsługa formularza
-    document.getElementById('guestForm').addEventListener('submit', async e => {
-      e.preventDefault();
-      const data = new FormData(e.target);
-      try {
-        const resp = await fetch('/api/upload', { method: 'POST', body: data });
-        const json = await resp.json();
-        if (json.success) {
-          alert('Dziękujemy za wpis!');
-          e.target.reset();
-          loadGallery();
-        } else {
-          alert('Błąd: ' + (json.error || 'nieznany'));
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Księga Gości z Media</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-      } catch {
-        alert('Błąd sieciowy przy wysyłce.');
-      }
-    });
-
-    // 2) Lightbox
-    const modal = document.getElementById('modal');
-    const modalImg = document.getElementById('modalImg');
-    const modalVideo = document.getElementById('modalVideo');
-    const modalClose = document.getElementById('modalClose');
-
-    modalClose.addEventListener('click', () => {
-      modal.classList.add('hidden');
-      modalVideo.pause();
-    });
-    modal.addEventListener('click', e => {
-      if (e.target === modal) {
-        modal.classList.add('hidden');
-        modalVideo.pause();
-      }
-    });
-
-    // 3) Wczytywanie galerii (obrazy i wideo)
-    async function loadGallery() {
-      try {
-        const urls = await fetch('/api/guests').then(r => r.json());
-        const gallery = document.getElementById('gallery');
-        gallery.innerHTML = '';
-        const items = urls.slice(0, 6);
-
-        items.forEach(url => {
-          const isVideo = /\.(mp4|webm|ogg)$/i.test(url);
-          const el = document.createElement(isVideo ? 'video' : 'img');
-          el.src = url;
-          el.className = 'w-full h-24 object-cover rounded-md shadow cursor-pointer';
-          if (isVideo) {
-            el.muted = true;
-            el.playsInline = true;
-          } else {
-            el.alt = 'Zdjęcie z księgi gości';
-          }
-          el.addEventListener('click', () => {
-            modalImg.classList.add('hidden');
-            modalVideo.classList.add('hidden');
-            if (isVideo) {
-              modalVideo.src = url;
-              modalVideo.classList.remove('hidden');
-            } else {
-              modalImg.src = url;
-              modalImg.classList.remove('hidden');
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 40px;
+            color: white;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .form-container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 40px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        input, textarea, button {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e5e9;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+            width: 100%;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .file-input-label {
+            display: block;
+            padding: 12px;
+            border: 2px dashed #ccc;
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .file-input-label:hover {
+            border-color: #667eea;
+            background-color: #f8f9ff;
+        }
+        
+        .gallery {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 40px;
+        }
+        
+        .gallery-item {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .gallery-item:hover {
+            transform: translateY(-5px);
+        }
+        
+        .gallery-item img,
+        .gallery-item video {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+        
+        .message {
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+        }
+        
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: white;
+            font-size: 1.2em;
+        }
+        
+        .admin-link {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255,255,255,0.9);
+            padding: 10px 15px;
+            border-radius: 20px;
+            text-decoration: none;
+            color: #333;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        
+        .admin-link:hover {
+            background: white;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
             }
-            modal.classList.remove('hidden');
-          });
-          gallery.appendChild(el);
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .form-container {
+                padding: 20px;
+            }
+            
+            .gallery {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <a href="/admin" class="admin-link">🛠️ Admin</a>
+    
+    <div class="container">
+        <div class="header">
+            <h1>📸 Księga Gości</h1>
+            <p>Podziel się swoimi wspomnieniami i mediami</p>
+        </div>
+        
+        <div class="form-container">
+            <form id="uploadForm">
+                <div class="form-group">
+                    <label for="name">Twoje imię *</label>
+                    <input type="text" id="name" name="name" required maxlength="50">
+                </div>
+                
+                <div class="form-group">
+                    <label for="message">Wiadomość (opcjonalnie)</label>
+                    <textarea id="message" name="message" rows="3" maxlength="500" placeholder="Napisz coś miłego..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Zdjęcie lub wideo *</label>
+                    <div class="file-input-wrapper">
+                        <input type="file" id="media" name="media" accept="image/*,video/*" required>
+                        <label for="media" class="file-input-label">
+                            📁 Wybierz plik (max 10MB)
+                        </label>
+                    </div>
+                    <small style="color: #666; display: block; margin-top: 5px;">
+                        Obsługiwane formaty: JPEG, PNG, GIF, MP4, WebM, OGG
+                    </small>
+                </div>
+                
+                <button type="submit" id="submitBtn">
+                    📤 Wyślij wpis
+                </button>
+            </form>
+        </div>
+        
+        <div id="message"></div>
+        
+        <div class="gallery" id="gallery">
+            <div class="loading">Ładowanie galerii...</div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            loadGallery();
+            
+            const form = document.getElementById('uploadForm');
+            const fileInput = document.getElementById('media');
+            const fileLabel = document.querySelector('.file-input-label');
+            const submitBtn = document.getElementById('submitBtn');
+            
+            // Update file label
+            fileInput.addEventListener('change', function() {
+                if (this.files.length > 0) {
+                    const file = this.files[0];
+                    const size = (file.size / 1024 / 1024).toFixed(2);
+                    fileLabel.textContent = `📁 ${file.name} (${size}MB)`;
+                } else {
+                    fileLabel.textContent = '📁 Wybierz plik (max 10MB)';
+                }
+            });
+            
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData();
+                formData.append('name', document.getElementById('name').value);
+                formData.append('message', document.getElementById('message').value);
+                formData.append('media', document.getElementById('media').files[0]);
+                
+                submitBtn.disabled = true;
+                submitBtn.textContent = '⏳ Wysyłanie...';
+                
+                try {
+                    const response = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: formData
+                    });
+                    
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        showMessage('✅ Wpis został dodany pomyślnie!', 'success');
+                        form.reset();
+                        fileLabel.textContent = '📁 Wybierz plik (max 10MB)';
+                        loadGallery();
+                    } else {
+                        showMessage('❌ ' + (result.error || 'Błąd podczas wysyłania'), 'error');
+                    }
+                } catch (error) {
+                    showMessage('❌ Błąd połączenia: ' + error.message, 'error');
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '📤 Wyślij wpis';
+                }
+            });
         });
-
-        gallery.classList.remove('opacity-0');
-      } catch (err) {
-        console.error('Błąd galerii:', err);
-      }
-    }
-
-    // ładujemy galerę po pełnym załadowaniu strony
-    window.addEventListener('load', loadGallery);
-  </script>
+        
+        function showMessage(text, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = text;
+            messageDiv.className = `message ${type}`;
+            
+            setTimeout(() => {
+                messageDiv.textContent = '';
+                messageDiv.className = '';
+            }, 5000);
+        }
+        
+        async function loadGallery() {
+            try {
+                const response = await fetch('/api/guests');
+                const mediaUrls = await response.json();
+                
+                const gallery = document.getElementById('gallery');
+                
+                if (mediaUrls.length === 0) {
+                    gallery.innerHTML = '<div class="loading">Brak wpisów w galerii</div>';
+                    return;
+                }
+                
+                gallery.innerHTML = mediaUrls.map(url => {
+                    const isVideo = url.includes('.mp4') || url.includes('.webm') || url.includes('.ogg');
+                    
+                    if (isVideo) {
+                        return `
+                            <div class="gallery-item">
+                                <video src="${url}" controls muted preload="metadata"></video>
+                            </div>
+                        `;
+                    } else {
+                        return `
+                            <div class="gallery-item">
+                                <img src="${url}" alt="Media" loading="lazy">
+                            </div>
+                        `;
+                    }
+                }).join('');
+                
+            } catch (error) {
+                document.getElementById('gallery').innerHTML = 
+                    '<div class="loading">Błąd ładowania galerii</div>';
+            }
+        }
+    </script>
 </body>
 </html>
